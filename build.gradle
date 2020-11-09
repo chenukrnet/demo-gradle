@@ -1,15 +1,47 @@
+// блок плагинов, плагины меняют таски учавствующие в сборки/ добавляют таски - красивый императивный подход
 plugins {
-    id 'org.springframework.boot' version '2.3.5.RELEASE'
+   id 'org.springframework.boot' version '2.3.5.RELEASE'
     id 'io.spring.dependency-management' version '1.0.10.RELEASE'
     id 'java'
+    id  'org.barfuin.gradle.taskinfo'  version '1.0.2' // чтоб построить красивый граф зависимостей таски
 }
+
 
 group = 'com.home.gradle'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '15'
 
+
+// Вариант взять jdk и скомпилировать в режиме совместимости
+//java{
+//    sourceCompatibility =JavaVersion.VERSION_11
+//}
+
+
+// Если JDK совпадет с версией - возьмет его, если найдет (соглансо конфигурации поиска - возьмет целевую jdk, если не найдет
+// скачает AdobeOpenJdk нужной версии в хом директорию .gradle (C:\Users\ab020686ssv\.gradle\jdks что весьма удобно но сожрет чуть больше места на hdd)
+// https://docs.gradle.org/current/userguide/toolchains.html
+java{
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(15)
+    }
+}
+
+bootJar  {
+    //Имя артифакта (не хочу чтоб была верия) https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Jar.html#org.gradle.api.tasks.bundling.Jar:archiveFileName
+    // (перменные можно посмотреть тут - https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Jar.html
+    archiveVersion.set('')
+//    archiveVersion ='' тоже валидная строчка но будет ругаться linter
+}
+
+// эта опция позволяет на этапе компиляции использовать анннотайшн процессоры, как будто они указаны
 configurations {
+
+    // в качестве compileOnly зависимостей
     compileOnly {
+        extendsFrom annotationProcessor
+    }
+    // в качестве testCompileOnly зависимостей
+    testCompileOnly {
         extendsFrom annotationProcessor
     }
 }
@@ -20,11 +52,12 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    compileOnly 'org.projectlombok:lombok'
+//    compileOnly 'org.projectlombok:lombok' // Можно не указывать из за конфигурации выше
+//    testCompileOnly 'org.projectlombok:lombok' // Можно не указывать из за конфигурации выше
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation('org.springframework.boot:spring-boot-starter-test') {
-        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine' //module - это artifactId
     }
 }
 
