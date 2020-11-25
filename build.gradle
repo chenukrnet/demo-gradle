@@ -1,9 +1,10 @@
 // блок плагинов, плагины меняют таски учавствующие в сборки/ добавляют таски - красивый императивный подход
 plugins {
-   id 'org.springframework.boot' version '2.3.5.RELEASE'
+    id 'org.springframework.boot' version '2.3.5.RELEASE'
     id 'io.spring.dependency-management' version '1.0.10.RELEASE'
+    id 'maven-publish'
+    id 'java-library'
     id 'java'
-    id  'org.barfuin.gradle.taskinfo'  version '1.0.2' // чтоб построить красивый граф зависимостей таски
 }
 
 
@@ -20,13 +21,14 @@ version = '0.0.1-SNAPSHOT'
 // Если JDK совпадет с версией - возьмет его, если найдет (соглансо конфигурации поиска - возьмет целевую jdk, если не найдет
 // скачает AdobeOpenJdk нужной версии в хом директорию .gradle (C:\Users\ab020686ssv\.gradle\jdks что весьма удобно но сожрет чуть больше места на hdd)
 // https://docs.gradle.org/current/userguide/toolchains.html
-java{
+java { // нужен или этот 'java-library' или 'java' плагин
     toolchain {
         languageVersion = JavaLanguageVersion.of(15)
     }
 }
 
-bootJar  {
+//'org.springframework.boot' пришло из этого плагина - позволяет делать исполняемый джарник
+bootJar {
     //Имя артифакта (не хочу чтоб была верия) https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Jar.html#org.gradle.api.tasks.bundling.Jar:archiveFileName
     // (перменные можно посмотреть тут - https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Jar.html
     archiveVersion.set('')
@@ -36,12 +38,16 @@ bootJar  {
 // эта опция позволяет на этапе компиляции использовать анннотайшн процессоры, как будто они указаны
 configurations {
 
-    // в качестве compileOnly зависимостей
+    // в качестве compileOnly зависимостей добавить из annotationProcessor
     compileOnly {
         extendsFrom annotationProcessor
     }
-    // в качестве testCompileOnly зависимостей
+    // в качестве testCompileOnly зависимостей добавить из annotationProcessor
     testCompileOnly {
+        extendsFrom annotationProcessor
+    }
+    // в качестве testAnnotationProcessor зависимостей добавить из annotationProcessor
+    testAnnotationProcessor {
         extendsFrom annotationProcessor
     }
 }
@@ -50,17 +56,50 @@ repositories {
     mavenCentral()
 }
 
+
+
 dependencies {
+    //implementation platform('org.springframework.boot:spring-boot-dependencies:2.3.5.RELEASE')
+
+    //В библиотеке скоуп будет runtime - такое подходит только для зависимостей интерфейсов, для которых будет зависимость реализации в месте подключения
+    // градл рекомендует его совать как можно чаще, вот только если имплементации на этапе компиляции не будет ничего не скомпилиться
+    // пример мы используем интерфейсы jpa в стартере, конкретная имплементация будет хибернейт это примерно об этом. т.е имплементацию надо будет выбрать в помнике или градл билде куда подключаете
+    // Если брать спрингбутовые зависимости поставляемые через бом - тоже норм, тк в месте подключения скорей всего вы делаете так же.
+    // та же ситуация с драйвером к базе данных
+    // одно из главных достоинств более быстрая компиляция проекта подключившего такую заявисимость
     implementation 'org.springframework.boot:spring-boot-starter-web'
-//    compileOnly 'org.projectlombok:lombok' // Можно не указывать из за конфигурации выше
-//    testCompileOnly 'org.projectlombok:lombok' // Можно не указывать из за конфигурации выше
+
+    // зависимость не попадет в помник в библиотеку подходит для анотейшн процессоров в частности ломбока который должен быть в класпасе на этапе компиляции
+    // compileOnly 'org.projectlombok:lombok' // Можно не указывать из за конфигурации выше
+    // testCompileOnly 'org.projectlombok:lombok' // Можно не указывать из за конфигурации выше
+
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     annotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
     testImplementation('org.springframework.boot:spring-boot-starter-test') {
         exclude group: 'org.junit.vintage', module: 'junit-vintage-engine' //module - это artifactId
     }
+    // compileOnlyApi преобразовывается в скоуп compile который является если не указывать его к зависимости к мавену.
+    // зависимость будет на этапе компиляции и на этапе выполнения.
+    def guava = '30.0-jre'
+    api "com.google.guava:guava:$guava"
+    compileOnlyApi 'com.google.code.gson:gson'
+
+    // runtimeOnly = provided было актуально когда среда выполнения поставляла зависимости, сейчас скорей редкое исключение
+    // testImplementation скоуп test
+    // testCompileOnly на этапе компиляции тестов
+    // testRuntimeOnly поставляется платформой на этапе работы тестов
 }
 
 test {
-    useJUnitPlatform()
+    useJUnitPlatform{
+        excludeTags('integration')
+    }
+}
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
 }
