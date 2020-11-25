@@ -57,6 +57,12 @@ repositories {
 }
 
 
+//
+ext{ // добавили экста перменную в проекте
+    commonsVersion= 3.11
+}
+//def commonsVersion= 3.11 // альтернативный и помоему более удачный способ
+
 
 dependencies {
     //implementation platform('org.springframework.boot:spring-boot-dependencies:2.3.5.RELEASE')
@@ -72,10 +78,10 @@ dependencies {
     // зависимость не попадет в помник в библиотеку подходит для анотейшн процессоров в частности ломбока который должен быть в класпасе на этапе компиляции
     // compileOnly 'org.projectlombok:lombok' // Можно не указывать из за конфигурации выше
     // testCompileOnly 'org.projectlombok:lombok' // Можно не указывать из за конфигурации выше
+    // testAnnotationProcessor 'org.projectlombok:lombok'// Можно не указывать из за конфигурации выше
+    annotationProcessor 'org.projectlombok:lombok'
 
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    annotationProcessor 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
     testImplementation('org.springframework.boot:spring-boot-starter-test') {
         exclude group: 'org.junit.vintage', module: 'junit-vintage-engine' //module - это artifactId
     }
@@ -84,15 +90,16 @@ dependencies {
     def guava = '30.0-jre'
     api "com.google.guava:guava:$guava"
     compileOnlyApi 'com.google.code.gson:gson'
-
+    compile "org.apache.commons:commons-lang3:$commonsVersion"
     // runtimeOnly = provided было актуально когда среда выполнения поставляла зависимости, сейчас скорей редкое исключение
     // testImplementation скоуп test
     // testCompileOnly на этапе компиляции тестов
     // testRuntimeOnly поставляется платформой на этапе работы тестов
 }
 
+
 test {
-    useJUnitPlatform{
+    useJUnitPlatform {
         excludeTags('integration')
     }
 }
